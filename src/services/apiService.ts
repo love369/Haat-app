@@ -50,7 +50,7 @@ class ApiService {
       headers = {},
       params = {},
       data,
-      timeout = 10000,
+      timeout = 100000,
     } = config;
 
     // Build URL with query parameters
@@ -77,7 +77,9 @@ class ApiService {
     requestConfig.signal = abortController.signal;
 
     try {
+     
       const response = await fetch(url.toString(), requestConfig);
+      console.log("responseresponse:::",response)
       clearTimeout(timeoutId);
 
       const responseData = await response.json().catch(() => ({}));
