@@ -190,13 +190,13 @@ const HomeScreen = () => {
   onPress={() => console.log('Market card pressed')}
 />
 
-    </ScrollView>
+   
         {/* Categories Section */}
         <Categories 
                 categories={marketData?.marketCategories || []} 
                 imageBaseUrl={IMAGE_BASE_URL}
               />
-    
+     </ScrollView>
     </>
   );
 }}
