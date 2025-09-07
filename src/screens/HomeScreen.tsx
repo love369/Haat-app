@@ -7,7 +7,7 @@ import { GET_API_END_POINT, HEADER_HOME_PAGE, IMAGE_BASE_URL } from '../utils/co
 import BannerSlider from '../components/BannerSlider';
 import Categories from '../components/Categories';
 import MarketCardEnhanced from '../components/MarketCardEnhanced';
-// Define the interface for the market data based on your API response
+
 interface MarketIcon {
   serverImage: string;
   smallServerImage: string;
@@ -127,7 +127,7 @@ const HomeScreen = () => {
     }
   }, [data]);
 
-  // Custom error component with more details
+  
   const renderErrorComponent = (error: any, onRetry?: () => void) => (
     <View style={styles.centerContainer}>
       <Text style={styles.errorTitle}>Failed to load market data</Text>
@@ -142,7 +142,7 @@ const HomeScreen = () => {
     </View>
   );
 
-  // Custom loading component
+  
   const renderLoadingComponent = (
     <View style={styles.centerContainer}>
       <ActivityIndicator size="large" color="#007AFF" />
@@ -170,7 +170,7 @@ const HomeScreen = () => {
        {(marketData) => {
   
   
-  // Construct the full image URL
+  
   const imageUrl = marketData?.icon?.serverImage 
   
     ? IMAGE_BASE_URL+marketData.icon.serverImage
@@ -205,7 +205,7 @@ const HomeScreen = () => {
   );
 };
 
-// Add these styles that are referenced in the component
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -1,18 +1,18 @@
-// components/Categories.tsx
+
 import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { IMAGE_BASE_URL } from '../utils/commonString';
 
-// ... (your existing interfaces remain the same)
+
 
 const Categories: React.FC<CategoriesProps> = ({ categories, imageBaseUrl }) => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const [activeCategory, setActiveCategory] = useState(0);
 
   const handleCategoryPress = (category: MarketCategory) => {
-    // Get all products from all subcategories in this category
+    
     navigation.navigate('RestaurantDetailsScreen', {
       headingMainCategries: category,
      
@@ -27,7 +27,7 @@ const Categories: React.FC<CategoriesProps> = ({ categories, imageBaseUrl }) => 
     );
   }
 
-  // Main category cards with background images
+  
   const renderCategoryCards = () => (
     <ScrollView
       style={styles.mainScrollContainer}

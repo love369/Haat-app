@@ -18,7 +18,6 @@ import { IMAGE_BASE_URL, PLACEHOLDER_IMAGE } from '../utils/commonString';
 const { width: screenWidth } = Dimensions.get('window');
 const CARD_MARGIN = 8;
 const HORIZONTAL_PADDING = 16;
-// Change back to 2 columns
 const CARD_WIDTH = (screenWidth - (HORIZONTAL_PADDING * 2) - CARD_MARGIN) / 2;
 
 type RootStackParamList = {
@@ -37,14 +36,6 @@ interface RestaurantDetailsScreenProps {
   route: RestaurantDetailsScreenRouteProp;
 }
 
-interface ProductSection {
-  title: string;
-  data: any[];
-  mainCategoryIndex: number;
-  subCategoryIndex: number;
-  id: string;
-}
-
 const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route }) => {
   const { headingMainCategries, restaurantInfo } = route.params;
   const [activeMainCategory, setActiveMainCategory] = useState(0);
@@ -55,52 +46,64 @@ const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route
   const subCategoriesScrollRef = useRef<ScrollView>(null);
   const productsListRef = useRef<FlatList>(null);
 
-  // Extract main categories and subcategories from the JSON structure
   const mainCategories = headingMainCategries || [];
   
-  // Prepare all products with section info
   React.useEffect(() => {
     const products: any[] = [];
     let productIndex = 0;
     
     mainCategories.forEach((mainCategory: any, mainIndex: number) => {
       mainCategory.marketSubcategories?.forEach((subcategory: any, subIndex: number) => {
-        // Add section header
+        const subcategoryProducts = subcategory.products || [];
+        
         products.push({
           id: `section-${subcategory.id}`,
           type: 'section',
           title: subcategory.name?.['en-US'] || 'Unnamed Subcategory',
-          itemCount: subcategory.products?.length || 0,
+          itemCount: subcategoryProducts.length,
           mainCategoryIndex: mainIndex,
           subCategoryIndex: subIndex,
           sectionId: subcategory.id
         });
         
-        // Add products
-        subcategory.products?.forEach((product: any) => {
+        for (let i = 0; i < subcategoryProducts.length; i += 2) {
+          const leftProduct = subcategoryProducts[i];
+          const rightProduct = subcategoryProducts[i + 1] || null;
+          
           products.push({
-            ...product,
-            type: 'product',
+            id: `row-${leftProduct.id}-${rightProduct?.id || 'single'}`,
+            type: 'productRow',
+            leftProduct: {
+              ...leftProduct,
+              mainCategoryIndex: mainIndex,
+              subCategoryIndex: subIndex,
+              productIndex: productIndex++,
+              sectionId: subcategory.id
+            },
+            rightProduct: rightProduct ? {
+              ...rightProduct,
+              mainCategoryIndex: mainIndex,
+              subCategoryIndex: subIndex,
+              productIndex: productIndex++,
+              sectionId: subcategory.id
+            } : null,
             mainCategoryIndex: mainIndex,
             subCategoryIndex: subIndex,
-            productIndex: productIndex++,
             sectionId: subcategory.id
           });
-        });
+        }
       });
     });
     
     setAllProducts(products);
   }, [mainCategories]);
 
-  // Get subcategories for the currently selected main category
   const currentSubCategories = mainCategories[activeMainCategory]?.marketSubcategories || [];
 
   const scrollToMainCategory = useCallback((index: number) => {
     setActiveMainCategory(index);
     setActiveSubCategory(0);
     
-    // Smooth scroll main category selector
     if (mainCategoriesScrollRef.current) {
       const scrollX = Math.max(0, (index - 1) * 120);
       mainCategoriesScrollRef.current.scrollTo({
@@ -109,29 +112,38 @@ const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route
       });
     }
 
-    // Reset subcategory selector
     if (subCategoriesScrollRef.current) {
       subCategoriesScrollRef.current.scrollTo({ x: 0, animated: true });
     }
 
-    // Find first product of the main category and scroll to it
-    const firstProductIndex = allProducts.findIndex(
+    const firstSectionIndex = allProducts.findIndex(
       item => item.type === 'section' && item.mainCategoryIndex === index
     );
     
-    if (firstProductIndex !== -1 && productsListRef.current) {
-      productsListRef.current.scrollToIndex({
-        index: firstProductIndex,
-        animated: true,
-        viewPosition: 0
+    if (firstSectionIndex !== -1 && productsListRef.current) {
+      const estimatedOffset = firstSectionIndex * 60; // Approximate offset
+      productsListRef.current.scrollToOffset({
+        offset: estimatedOffset,
+        animated: true
       });
+      
+      setTimeout(() => {
+        try {
+          productsListRef.current?.scrollToIndex({
+            index: firstSectionIndex,
+            animated: true,
+            viewPosition: 0
+          });
+        } catch (error) {
+          console.log('ScrollToIndex failed, using scrollToOffset');
+        }
+      }, 100);
     }
   }, [allProducts]);
 
   const scrollToSubCategory = useCallback((subCategoryId: string, subCategoryIndex: number) => {
     setActiveSubCategory(subCategoryIndex);
     
-    // Smooth scroll subcategory selector
     if (subCategoriesScrollRef.current) {
       const scrollX = Math.max(0, (subCategoryIndex - 1) * 120);
       subCategoriesScrollRef.current.scrollTo({
@@ -140,21 +152,31 @@ const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route
       });
     }
     
-    // Find the section and scroll to it
     const sectionIndex = allProducts.findIndex(
       item => item.type === 'section' && item.sectionId === subCategoryId
     );
     
     if (sectionIndex !== -1 && productsListRef.current) {
-      productsListRef.current.scrollToIndex({
-        index: sectionIndex,
-        animated: true,
-        viewPosition: 0
+      const estimatedOffset = sectionIndex * 60;
+      productsListRef.current.scrollToOffset({
+        offset: estimatedOffset,
+        animated: true
       });
+      
+      setTimeout(() => {
+        try {
+          productsListRef.current?.scrollToIndex({
+            index: sectionIndex,
+            animated: true,
+            viewPosition: 0
+          });
+        } catch (error) {
+          console.log('ScrollToIndex failed, using scrollToOffset');
+        }
+      }, 100);
     }
   }, [allProducts]);
 
-  // Handle scroll events to sync category selectors
   const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
       const firstVisibleItem = viewableItems[0].item;
@@ -193,7 +215,6 @@ const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route
     return Math.round(((basePrice - discountPrice) / basePrice) * 100);
   }, []);
 
-  // Render horizontal main category selector
   const renderMainCategorySelector = () => (
     <View style={styles.selectorContainer}>
       <ScrollView
@@ -231,7 +252,6 @@ const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route
     </View>
   );
 
-  // Render horizontal subcategory selector
   const renderSubCategorySelector = () => (
     <View style={styles.selectorContainer}>
       <ScrollView
@@ -270,7 +290,6 @@ const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route
     </View>
   );
 
-  // Render section header - 100% width
   const renderSectionHeader = (item: any) => (
     <View style={styles.sectionHeader}>
       <View style={styles.sectionHeaderContent}>
@@ -286,18 +305,19 @@ const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route
     </View>
   );
 
-  // Render product card
-  const renderProductCard = (item: any) => {
-    const productImage = item.productImages?.[0]?.serverImageUrl;
-    const hasDiscount = item.discountPrice && item.basePrice > item.discountPrice;
-    const rating = item.rating || restaurantInfo?.rating || 4.2;
-    const deliveryTime = item.deliveryTime || restaurantInfo?.deliveryTime || '20-30 mins';
+  const renderProductCard = (product: any, isLeft: boolean = true) => {
+    if (!product) return <View style={[styles.productCard, styles.emptyCard]} />;
+    
+    const productImage = product.productImages?.[0]?.serverImageUrl;
+    const hasDiscount = product.discountPrice && product.basePrice > product.discountPrice;
+    const rating = product.rating || restaurantInfo?.rating || 4.2;
+    const deliveryTime = product.deliveryTime || restaurantInfo?.deliveryTime || '20-30 mins';
     
     return (
       <TouchableOpacity 
-        style={styles.productCard}
+        style={[styles.productCard, isLeft ? styles.leftCard : styles.rightCard]}
         activeOpacity={0.95}
-        onPress={() => console.log('Product pressed:', item.id)}
+        onPress={() => console.log('Product pressed:', product.id)}
       >
         {/* Product Image */}
         <View style={styles.imageContainer}>
@@ -320,7 +340,7 @@ const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route
           {hasDiscount && (
             <View style={styles.discountBadge}>
               <Text style={styles.discountText}>
-                {calculateDiscount(item.basePrice, item.discountPrice)}% OFF
+                {calculateDiscount(product.basePrice, product.discountPrice)}% OFF
               </Text>
             </View>
           )}
@@ -336,11 +356,11 @@ const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route
         {/* Product Info */}
         <View style={styles.productInfo}>
           <Text style={styles.productName} numberOfLines={2}>
-            {item.name?.['en-US'] || 'Unnamed Product'}
+            {product.name?.['en-US'] || 'Unnamed Product'}
           </Text>
           
           <Text style={styles.productDescription} numberOfLines={2}>
-            {item.description?.['en-US'] || 'Delicious item from our kitchen'}
+            {product.description?.['en-US'] || 'Delicious item from our kitchen'}
           </Text>
           
           {/* Rating */}
@@ -355,18 +375,18 @@ const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route
           <View style={styles.priceRow}>
             <View style={styles.priceContainer}>
               <Text style={styles.productPrice}>
-                ${(item.discountPrice || item.basePrice)?.toFixed(2)}
+                ${(product.discountPrice || product.basePrice)?.toFixed(2)}
               </Text>
               {hasDiscount && (
                 <Text style={styles.originalPrice}>
-                  ${item.basePrice?.toFixed(2)}
+                  ${product.basePrice?.toFixed(2)}
                 </Text>
               )}
             </View>
             
             <TouchableOpacity 
               style={styles.addButton}
-              onPress={() => console.log('Add to cart:', item.id)}
+              onPress={() => console.log('Add to cart:', product.id)}
               activeOpacity={0.8}
             >
               <Text style={styles.addButtonText}>ADD</Text>
@@ -377,32 +397,48 @@ const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route
     );
   };
 
-  // Main render item function
+  const renderProductRow = (item: any) => (
+    <View style={styles.productRow}>
+      {renderProductCard(item.leftProduct, true)}
+      {renderProductCard(item.rightProduct, false)}
+    </View>
+  );
+
   const renderItem = ({ item, index }: { item: any; index: number }) => {
     if (item.type === 'section') {
       return renderSectionHeader(item);
     }
     
-    return (
-      <>
-      
-      <View style={styles.productWrapper}>
-      {renderProductCard(item)}
-      </View>
-      </>
-    );
-  };
-
-  const getItemLayout = (data: any, index: number) => {
-    const item = data[index];
-    if (item?.type === 'section') {
-      return { length: 60, offset: 60 * index, index };
+    if (item.type === 'productRow') {
+      return renderProductRow(item);
     }
-    // Approximate height for products
-    return { length: 280, offset: 280 * index, index };
+    
+    return null;
   };
 
-  const totalProducts = allProducts.filter(item => item.type === 'product').length;
+  const getItemLayout = useCallback((data: any, index: number) => {
+    const item = data?.[index];
+    if (item?.type === 'section') {
+      return { 
+        length: 80, // Section header height
+        offset: 80 * index, 
+        index 
+      };
+    }
+    const PRODUCT_ROW_HEIGHT = 300;
+    return { 
+      length: PRODUCT_ROW_HEIGHT, 
+      offset: PRODUCT_ROW_HEIGHT * index, 
+      index 
+    };
+  }, []);
+
+  const totalProducts = allProducts.reduce((count, item) => {
+    if (item.type === 'productRow') {
+      return count + (item.rightProduct ? 2 : 1);
+    }
+    return count;
+  }, 0);
 
   return (
     <View style={styles.container}>
@@ -421,18 +457,18 @@ const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route
       {/* Subcategory Selector */}
       {currentSubCategories.length > 0 && renderSubCategorySelector()}
       
-      {/* Products List - 2 columns */}
+      {/* Products List */}
       <FlatList
         ref={productsListRef}
         data={allProducts}
         renderItem={renderItem}
         keyExtractor={(item, index) => `${item.type}-${item.id || item.sectionId}-${index}`}
-        numColumns={1} // Back to 2 columns
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={{
           itemVisiblePercentThreshold: 30,
           waitForInteraction: true,
         }}
+        getItemLayout={getItemLayout}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={true}
@@ -448,13 +484,22 @@ const RestaurantDetailsScreen: React.FC<RestaurantDetailsScreenProps> = ({ route
           </View>
         }
         onScrollToIndexFailed={(info) => {
+          console.log('ScrollToIndex failed, retrying...', info);
           const wait = new Promise(resolve => setTimeout(resolve, 500));
           wait.then(() => {
-            productsListRef.current?.scrollToIndex({ 
-              index: info.index, 
-              animated: true,
-              viewPosition: 0
-            });
+            try {
+              productsListRef.current?.scrollToIndex({ 
+                index: Math.min(info.index, allProducts.length - 1), 
+                animated: true,
+                viewPosition: 0
+              });
+            } catch (error) {
+              const estimatedOffset = Math.min(info.index, allProducts.length - 1) * 60;
+              productsListRef.current?.scrollToOffset({
+                offset: estimatedOffset,
+                animated: true
+              });
+            }
           });
         }}
       />
@@ -552,12 +597,24 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     marginBottom: 16,
     marginTop: 8,
+    borderRadius: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   sectionHeaderContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingHorizontal: 16,
   },
   sectionHeaderText: {
     fontSize: 18,
@@ -575,15 +632,16 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '700',
   },
-  productWrapper: {
-    width: '50%', // 2 columns
-    paddingBottom: 16,
-    paddingHorizontal: CARD_MARGIN / 2,
+  productRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
   productCard: {
     backgroundColor: 'white',
     borderRadius: 16,
     overflow: 'hidden',
+    flex: 1,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -595,6 +653,17 @@ const styles = StyleSheet.create({
         elevation: 6,
       },
     }),
+  },
+  leftCard: {
+    marginRight: CARD_MARGIN / 2,
+  },
+  rightCard: {
+    marginLeft: CARD_MARGIN / 2,
+  },
+  emptyCard: {
+    backgroundColor: 'transparent',
+    shadowColor: 'transparent',
+    elevation: 0,
   },
   imageContainer: {
     height: 160,

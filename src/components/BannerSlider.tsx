@@ -1,6 +1,13 @@
 // components/BannerSlider.tsx
 import React, { useState, useEffect } from 'react';
-import { View, Image, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { 
+  View, 
+  Image, 
+  StyleSheet, 
+  Dimensions, 
+  TouchableOpacity, 
+  ActivityIndicator 
+} from 'react-native';
 import { IMAGE_BASE_URL, PLACEHOLDER_IMAGE } from '../utils/commonString';
 
 const { width } = Dimensions.get('window');
@@ -26,6 +33,8 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
   autoPlayInterval = 3000,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [loadingStates, setLoadingStates] = useState<{[key: number]: boolean}>({});
+  const [errorStates, setErrorStates] = useState<{[key: number]: boolean}>({});
 
   useEffect(() => {
     if (!autoPlay || banners.length <= 1) return;
@@ -37,12 +46,47 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
     return () => clearInterval(interval);
   }, [banners.length, autoPlay, autoPlayInterval]);
 
+  
+  const handleLoadStart = (index: number) => {
+    setLoadingStates(prev => ({ ...prev, [index]: true }));
+    setErrorStates(prev => ({ ...prev, [index]: false }));
+  };
+
+  
+  const handleLoadEnd = (index: number) => {
+    setLoadingStates(prev => ({ ...prev, [index]: false }));
+  };
+
+  
+  const handleError = (index: number, banner: Banner) => {
+    console.log(`Failed to load banner: ${banner.serverImageUrl}`);
+    setLoadingStates(prev => ({ ...prev, [index]: false }));
+    setErrorStates(prev => ({ ...prev, [index]: true }));
+  };
+
+  
+  const getSafeImageUri = (banner: Banner) => {
+    if (!banner?.serverImageUrl) return PLACEHOLDER_IMAGE;
+    
+    try {
+      
+      if (banner.serverImageUrl.startsWith('http')) {
+        return banner.serverImageUrl;
+      }
+      
+      
+      const encodedUrl = encodeURI(banner.serverImageUrl);
+      return `${IMAGE_BASE_URL}${encodedUrl}`;
+    } catch (error) {
+      console.log('Error processing image URL:', error);
+      return PLACEHOLDER_IMAGE;
+    }
+  };
+
   if (!banners || banners.length === 0) {
     return (
       <View style={styles.bannerContainer}>
-        
         <Image
-        
           source={{ uri: PLACEHOLDER_IMAGE }}
           style={styles.bannerImage}
           resizeMode="contain"
@@ -61,14 +105,36 @@ const BannerSlider: React.FC<BannerSliderProps> = ({
             { display: index === currentIndex ? 'flex' : 'none' },
           ]}
         >
+          {/* Loading indicator */}
+          {loadingStates[index] && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#FFFFFF" />
+            </View>
+          )}
+          
+          {/* Main banner image */}
           <Image
             source={{ 
-              uri: IMAGE_BASE_URL+banner.serverImageUrl
+              uri: errorStates[index] ? PLACEHOLDER_IMAGE : getSafeImageUri(banner)
             }}
-            style={styles.bannerImage}
+            style={[
+              styles.bannerImage,
+              loadingStates[index] && styles.hiddenImage
+            ]}
             resizeMode="cover"
-            onError={() => console.log(`Failed to load banner: ${banner.serverImageUrl}`)}
+            onLoadStart={() => handleLoadStart(index)}
+            onLoadEnd={() => handleLoadEnd(index)}
+            onError={() => handleError(index, banner)}
           />
+          
+          {/* Fallback image for errors */}
+          {errorStates[index] && (
+            <Image
+              source={{ uri: PLACEHOLDER_IMAGE }}
+              style={styles.bannerImage}
+              resizeMode="contain"
+            />
+          )}
         </View>
       ))}
       
@@ -96,17 +162,30 @@ const styles = StyleSheet.create({
     width: width,
     height: BANNER_HEIGHT,
     position: 'relative',
-    backgroundColor:'white'
+    backgroundColor: 'white'
   },
   bannerSlide: {
-    marginLeft: -16,
+    width: width,
+    height: BANNER_HEIGHT,
+    position: 'relative',
+  },
+  bannerImage: {
     width: width,
     height: BANNER_HEIGHT,
   },
-  bannerImage: {
-   
-    width: '105%' ,
-    height: '100%',
+  hiddenImage: {
+    opacity: 0,
+  },
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    zIndex: 10,
   },
   indicatorContainer: {
     position: 'absolute',

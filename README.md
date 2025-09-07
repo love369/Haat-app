@@ -134,7 +134,7 @@ yarn ios
 
 > **Watch the app in action:** 
 > 
-> 🔗 [**View Demo Video**](https://drive.google.com/file/d/1aVa3nvfDW_6I4yDZTmjF8SMX0ZJer44S/view?usp=sharing)
+> 🔗 [**View Demo Video**](https://drive.google.com/file/d/1puuC1o6aXyDr22FY136Uj25PiSaVwtvz/view?usp=sharing)
 
 ---
 
